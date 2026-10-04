@@ -15,12 +15,12 @@ export function useUsuario() {
       );
       if (user) {
         setUsuarioActual(user);
-        return true;
+        return user;
       }
-      return false; // Credenciales incorrectas
+      return null;
     } catch (error) {
       console.error('Error en login:', error);
-      return false;
+      return null;
     } finally {
       setCargando(false);
     }
@@ -30,19 +30,19 @@ export function useUsuario() {
     setUsuarioActual(null);
   };
 
-  const crearUsuario = async (nombre: string, correo: string, contrasena: string) => {
+ const crearUsuario = async (nombre: string, correo: string, contrasena: string) => {
     setCargando(true);
     try {
       const result = await db.runAsync(
         'INSERT INTO Usuario (nombre, correo, contrasena) VALUES (?, ?, ?)',
         [nombre, correo, contrasena]
       );
-      // Auto-login después de registrar
-      setUsuarioActual({ id: result.lastInsertRowId, nombre, correo, contrasena });
-      return true;
+      const newUser = { id: result.lastInsertRowId, nombre, correo, contrasena };
+      setUsuarioActual(newUser);
+      return newUser;
     } catch (error) {
-      console.error('Error creando usuario (¿correo duplicado?):', error);
-      return false;
+      console.error('Error creando usuario:', error);
+      return null;
     } finally {
       setCargando(false);
     }

@@ -1,159 +1,131 @@
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useConfiguracion } from '../hooks/useConfiguracion';
 import { useUsuario } from '../hooks/useUsuario';
 
-export default function HomeScreen() {
-  // 1. Hooks de Base de Datos
-  const { usuarioActual, cargando: cargandoUser, login, crearUsuario, logout } = useUsuario();
-  const { config, cargarConfiguracion, guardarConfiguracion } = useConfiguracion(usuarioActual?.id || null);
+export default function LoginScreen() {
+  const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const { cargando, login } = useUsuario();
   
-  // 2. Hook de Tailwind
-  const { setColorScheme } = useColorScheme();
-
-  // 3. Estados locales para los inputs del formulario
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [esRegistro, setEsRegistro] = useState(false);
+  const [mostrarPassword, setMostrarPassword] = useState(false);
 
-  // Cuando el usuario se loguea, cargamos su configuración
-  useEffect(() => {
-    if (usuarioActual) {
-      cargarConfiguracion();
-    }
-  }, [usuarioActual, cargarConfiguracion]);
+  const isDark = colorScheme === 'dark';
+  const iconColor = isDark ? '#94a3b8' : '#94a3b8'; // slate-400
 
-  // Sincronizar el tema de la BD con Tailwind
-  useEffect(() => {
-    if (config?.tema) {
-      setColorScheme(config.tema === 'oscuro' ? 'dark' : 'light');
+  const handleLogin = async () => {
+    if (!correo || !contrasena) return alert('Ingresa tu correo y contraseña');
+    const user = await login(correo, contrasena);
+    if (user) {
+      router.replace({ pathname: '/inicio', params: { idUsuario: user.id, nombre: user.nombre } });
     } else {
-      // Por defecto si el usuario es nuevo
-      setColorScheme('light');
-    }
-  }, [config?.tema, setColorScheme]);
-
-  // Manejar Login / Registro
-  const handleAuth = async () => {
-    if (esRegistro) {
-      if (!nombre || !correo || !contrasena) return alert('Llena todos los campos');
-      const exito = await crearUsuario(nombre, correo, contrasena);
-      if (!exito) alert('Error al registrar (¿Correo ya existe?)');
-    } else {
-      if (!correo || !contrasena) return alert('Llena todos los campos');
-      const exito = await login(correo, contrasena);
-      if (!exito) alert('Credenciales incorrectas');
+      alert('Credenciales incorrectas');
     }
   };
 
-  // Alternar y guardar Tema
-  const toggleTema = async () => {
-    if (!usuarioActual) return;
-    const nuevoTema = config?.tema === 'oscuro' ? 'claro' : 'oscuro';
-    await guardarConfiguracion(
-      nuevoTema,
-      config?.hora_predeterminado || '00:00',
-      config?.bloque_minutos || 30,
-      config?.descanso_minutos || 5,
-      config?.maximo_minutos || 120
-    );
-  };
-
-  // PANTALLA DE CARGA
-  if (cargandoUser) {
+  if (cargando) {
     return (
-      <View className="flex-1 justify-center items-center bg-slate-100 dark:bg-slate-900">
-        <ActivityIndicator size="large" color="#0ea5e9" />
+      <View className="flex-1 justify-center items-center bg-slate-50 dark:bg-slate-900">
+        <ActivityIndicator size="large" color="#4f46e5" />
       </View>
     );
   }
 
-  // PANTALLA 1: LOGIN / REGISTRO (Si no hay usuario en sesión)
-  if (!usuarioActual) {
-    return (
-      <View className="flex-1 justify-center px-8 bg-slate-100 dark:bg-slate-900">
-        <Text className="text-3xl font-bold text-slate-800 dark:text-sky-400 mb-8 text-center">
-          {esRegistro ? 'Crear Cuenta' : 'Iniciar Sesión'}
-        </Text>
-
-        {esRegistro && (
-          <TextInput
-            placeholder="Tu Nombre"
-            placeholderTextColor="#94a3b8"
-            value={nombre}
-            onChangeText={setNombre}
-            className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-3 rounded-lg mb-4 border border-slate-200 dark:border-slate-700"
-          />
-        )}
-        
-        <TextInput
-          placeholder="Correo Electrónico"
-          placeholderTextColor="#94a3b8"
-          value={correo}
-          onChangeText={setCorreo}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-3 rounded-lg mb-4 border border-slate-200 dark:border-slate-700"
-        />
-        
-        <TextInput
-          placeholder="Contraseña"
-          placeholderTextColor="#94a3b8"
-          value={contrasena}
-          onChangeText={setContrasena}
-          secureTextEntry
-          className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white px-4 py-3 rounded-lg mb-6 border border-slate-200 dark:border-slate-700"
-        />
-
-        <TouchableOpacity 
-          onPress={handleAuth}
-          className="bg-sky-500 py-4 rounded-lg items-center mb-4 active:bg-sky-600"
-        >
-          <Text className="text-white font-bold text-lg">
-            {esRegistro ? 'Registrarse' : 'Entrar'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setEsRegistro(!esRegistro)}>
-          <Text className="text-slate-500 dark:text-slate-400 text-center mt-2">
-            {esRegistro ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  // PANTALLA 2: DASHBOARD (Usuario logueado)
   return (
-    <View className="flex-1 items-center justify-center bg-slate-100 dark:bg-slate-900 px-6 transition-colors duration-300">
-      <Text className="text-3xl font-bold text-slate-800 dark:text-sky-400 mb-2">
-        Hola, {usuarioActual.nombre}
-      </Text>
+    <View className="flex-1 px-8 bg-slate-50 dark:bg-slate-900 justify-center">
       
-      <Text className="text-base text-slate-500 dark:text-slate-400 mb-8 text-center">
-        Tema guardado en SQLite: 
-        <Text className="font-bold text-sky-500"> {config?.tema?.toUpperCase() || 'CARGANDO...'}</Text>
+      {/* Cabecera y Logo */}
+      <View className="items-center mb-10 mt-10">
+        <View className="bg-indigo-600 w-16 h-16 rounded-2xl items-center justify-center mb-4">
+          <Feather name="check-square" size={32} color="white" />
+        </View>
+        <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          Life Assistant
+        </Text>
+        <Text className="text-sm text-slate-500 dark:text-slate-400 text-center">
+          Tu día, con un poco más de claridad.
+        </Text>
+      </View>
+
+      <Text className="text-xl font-bold text-slate-900 dark:text-white mb-6 text-center">
+        Qué bueno verte
+      </Text>
+
+      {/* Formulario */}
+      <View className="mb-4">
+        <Text className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">
+          Correo electrónico
+        </Text>
+        <View className="flex-row items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 h-14">
+          <TextInput
+            className="flex-1 text-slate-900 dark:text-white"
+            placeholder="joe.cuadros@correo.com"
+            placeholderTextColor="#94a3b8"
+            value={correo}
+            onChangeText={setCorreo}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Feather name="mail" size={20} color={iconColor} />
+        </View>
+      </View>
+
+      <View className="mb-2">
+        <Text className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">
+          Contraseña
+        </Text>
+        <View className="flex-row items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 h-14">
+          <TextInput
+            className="flex-1 text-slate-900 dark:text-white"
+            placeholder="••••••••••••"
+            placeholderTextColor="#94a3b8"
+            value={contrasena}
+            onChangeText={setContrasena}
+            secureTextEntry={!mostrarPassword}
+          />
+          <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)}>
+            <Feather name={mostrarPassword ? "eye" : "eye-off"} size={20} color={iconColor} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity className="mb-8">
+        <Text className="text-indigo-600 dark:text-indigo-400 text-sm font-medium">
+          ¿Olvidaste tu contraseña?
+        </Text>
+      </TouchableOpacity>
+
+      {/* Botones */}
+      <TouchableOpacity 
+        onPress={handleLogin}
+        className="bg-indigo-600 py-4 rounded-xl items-center mb-6 shadow-sm active:bg-indigo-700"
+      >
+        <Text className="text-white font-bold text-base">
+          Iniciar sesión
+        </Text>
+      </TouchableOpacity>
+
+      <Text className="text-center text-slate-500 dark:text-slate-400 mb-4">
+        ¿Aún no tienes cuenta?
       </Text>
 
       <TouchableOpacity 
-        onPress={toggleTema}
-        className="bg-slate-800 dark:bg-white px-6 py-4 rounded-xl shadow-md active:opacity-80 mb-4 w-full items-center"
+        onPress={() => router.push('/registro')}
+        className="bg-indigo-50 dark:bg-indigo-900/30 py-4 rounded-xl items-center mb-8 border border-indigo-100 dark:border-indigo-800/50"
       >
-        <Text className="text-white dark:text-slate-900 font-semibold text-lg">
-          Cambiar a modo {config?.tema === 'oscuro' ? 'Claro' : 'Oscuro'}
+        <Text className="text-indigo-600 dark:text-indigo-400 font-bold text-base">
+          Crear cuenta
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        onPress={logout}
-        className="bg-red-500 px-6 py-4 rounded-xl shadow-md active:bg-red-600 w-full items-center"
-      >
-        <Text className="text-white font-semibold text-lg">
-          Cerrar Sesión
-        </Text>
-      </TouchableOpacity>
+      <Text className="text-center text-xs text-slate-400 dark:text-slate-500 mt-auto mb-6">
+        Tareas, horarios y tiempo para ti.
+      </Text>
+
     </View>
   );
 }
