@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Text, TouchableOpacity, View } from 'react-native';
 
-export default function TareaItem({ tarea, onToggle }: any) {
+export default function TareaItem({ tarea, nombrePadre, onToggle }: any) {
   const isUrgente = tarea.prioridad === 'Urgente';
   const isAlta = tarea.prioridad === 'Alta';
   const isMedia = tarea.prioridad === 'Media';
@@ -20,6 +20,14 @@ export default function TareaItem({ tarea, onToggle }: any) {
             <Text className={`text-base font-bold mb-1 ${tarea.completado ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
               {tarea.descripcion}
             </Text>
+            
+            {/* Si es una subtarea, muestra a quién pertenece */}
+            {nombrePadre && (
+              <View className="flex-row items-center mb-2 mt-1">
+                <Feather name="corner-down-right" size={14} color="#94a3b8" />
+                <Text className="text-xs text-slate-500 dark:text-slate-400 ml-1">Subtarea de: {nombrePadre}</Text>
+              </View>
+            )}
             
             <View className="flex-row items-center mt-2 flex-wrap gap-2">
               <View className={`flex-row items-center px-2 py-1 rounded-lg border 

@@ -1,37 +1,66 @@
-import { Feather } from '@expo/vector-icons';
-import { useGlobalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect, useGlobalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import TareaItem from '../../components/TareaItem'; // Importación limpia
+import TareaItem from '../../components/TareaItem';
+import { useHorario } from '../../hooks/useHorario';
 import { useTareas } from '../../hooks/useTareas';
+import { useTipo } from '../../hooks/useTipo';
 
 export default function InicioScreen() {
     const router = useRouter();
-    const { idUsuario, nombre } = useGlobalSearchParams();
-    const userId = Number(idUsuario);
+    const { nombre } = useGlobalSearchParams();
+    const [userId, setUserId] = useState<number | null>(null);
 
-    // Usamos estrictamente tu hook sin inventar propiedades
     const { tareas, cargarTareas, marcarCompletada } = useTareas(userId);
+    const { horarios, cargarHorarios } = useHorario(userId);
+    const { tipos, cargarTipos } = useTipo(userId);
     const [refrescando, setRefrescando] = useState(false);
 
     useEffect(() => {
-        cargarTareas();
-    }, [cargarTareas]);
+        AsyncStorage.getItem('userId').then(id => { if (id) setUserId(Number(id)); });
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (userId) {
+                cargarTareas();
+                cargarHorarios();
+                cargarTipos();
+            }
+        }, [userId, cargarTareas, cargarHorarios, cargarTipos])
+    );
 
     const onRefresh = async () => {
         setRefrescando(true);
-        await cargarTareas();
+        if (userId) {
+            await cargarTareas();
+            await cargarHorarios();
+        }
         setRefrescando(false);
     };
+
+    // LÓGICA DE HORA HUECA / HORARIO ACTUAL
+    const now = new Date();
+    const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const diaActual = diasSemana[now.getDay()];
+    const horaActualStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    const horarioActual = horarios.find(h => h.dia === diaActual && horaActualStr >= h.hora_inicio && horaActualStr <= h.hora_fin);
+    const tipoActividadActual = horarioActual ? tipos.find(t => t.id === horarioActual.idTipo) : null;
 
     const pendientes = tareas.filter(t => !t.completado);
     const completadas = tareas.filter(t => t.completado);
     const total = tareas.length;
     const porcentaje = total === 0 ? 0 : Math.round((completadas.length / total) * 100);
 
-    const fechaActual = new Intl.DateTimeFormat('es-ES', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-    }).format(new Date());
+    const getNombrePadre = (idPadre: number) => {
+        if (!idPadre) return null;
+        const padre = tareas.find(t => t.id === idPadre);
+        return padre ? padre.descripcion : null;
+    };
+
+    const fechaFormat = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 
     return (
         <ScrollView
@@ -39,37 +68,51 @@ export default function InicioScreen() {
             showsVerticalScrollIndicator={false}
             refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} />}
         >
-            <View className="flex-row justify-between items-center mb-6">
-                <View>
-                    <Text className="text-3xl font-bold text-slate-900 dark:text-white">Hola, {nombre}</Text>
-                    <Text className="text-sm text-slate-500 dark:text-slate-400 capitalize">{fechaActual}</Text>
-                </View>
-                <TouchableOpacity className="p-3 border border-slate-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800 shadow-sm">
-                    <Feather name="bell" size={22} color="#4f46e5" />
-                </TouchableOpacity>
+            <View className="mb-6">
+                <Text className="text-3xl font-bold text-slate-900 dark:text-white">Hola, {nombre}</Text>
+                <Text className="text-sm text-slate-500 dark:text-slate-400 capitalize">{fechaFormat}</Text>
             </View>
 
-            <View className="bg-indigo-50/50 dark:bg-indigo-900/20 rounded-[32px] p-7 mb-8 border border-indigo-100 dark:border-indigo-800/30">
-                <Text className="text-xs font-bold text-indigo-600 dark:text-indigo-400 tracking-widest mb-2">TU SEMANA, EN ORDEN</Text>
-                <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Un paso a la vez.</Text>
-                <Text className="text-sm text-slate-500 dark:text-slate-400 mb-8 leading-5 pr-4">
-                    Tienes {pendientes.length} tareas pendientes.
+            {/* SECCIÓN DE HORA HUECA O ACTIVIDAD */}
+            <View className={`rounded-[24px] p-6 mb-6 border ${horarioActual ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}>
+                <Text className={`text-xs font-bold tracking-widest mb-1 ${horarioActual ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    AHORA MISMO
                 </Text>
+                {horarioActual ? (
+                    <>
+                        <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-1">
+                            {tipoActividadActual?.nombre || 'Actividad programada'}
+                        </Text>
+                        <Text className="text-sm text-slate-600 dark:text-slate-400">
+                            Termina a las {horarioActual.hora_fin}
+                        </Text>
+                    </>
+                ) : (
+                    <>
+                        <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Hora hueca</Text>
+                        <Text className="text-sm text-slate-600 dark:text-slate-400">
+                            Aprovecha para descansar o avanzar tareas.
+                        </Text>
+                    </>
+                )}
+            </View>
 
-                <View className="flex-row mb-8">
+            <View className="bg-white dark:bg-slate-800 rounded-[24px] p-6 mb-8 border border-slate-100 dark:border-slate-700/50 shadow-sm">
+                <Text className="text-xl font-bold text-slate-900 dark:text-white mb-4">Tu progreso hoy</Text>
+                <View className="flex-row mb-6">
                     <View className="flex-1">
-                        <Text className="text-5xl font-extrabold text-indigo-600 dark:text-indigo-400">{pendientes.length}</Text>
+                        <Text className="text-4xl font-extrabold text-slate-900 dark:text-white">{pendientes.length}</Text>
                         <Text className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Pendientes</Text>
                     </View>
                     <View className="flex-1">
-                        <Text className="text-5xl font-extrabold text-slate-900 dark:text-white">{completadas.length}</Text>
+                        <Text className="text-4xl font-extrabold text-indigo-600 dark:text-indigo-400">{completadas.length}</Text>
                         <Text className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Completadas</Text>
                     </View>
                 </View>
 
-                <View className="mb-2">
-                    <Text className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-3">
-                        {completadas.length} de {total} completadas - {porcentaje} %
+                <View>
+                    <Text className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-2">
+                        {completadas.length} de {total} completadas · {porcentaje} %
                     </Text>
                     <View className="h-2.5 bg-indigo-100 dark:bg-indigo-900/50 rounded-full overflow-hidden">
                         <View className="h-full bg-indigo-600 rounded-full" style={{ width: `${porcentaje}%` }} />
@@ -85,10 +128,10 @@ export default function InicioScreen() {
             </View>
 
             {pendientes.length === 0 ? (
-                <Text className="text-center text-slate-500 my-4">No tienes tareas pendientes.</Text>
+                <Text className="text-center text-slate-500 my-4">Todo al día. ¡Buen trabajo!</Text>
             ) : (
                 pendientes.slice(0, 3).map(tarea => (
-                    <TareaItem key={tarea.id} tarea={tarea} onToggle={marcarCompletada} />
+                    <TareaItem key={tarea.id} tarea={tarea} nombrePadre={getNombrePadre(tarea.idTareaPadre as number)} onToggle={marcarCompletada} />
                 ))
             )}
             <View className="h-20" />
