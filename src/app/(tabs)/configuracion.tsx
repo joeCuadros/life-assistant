@@ -11,7 +11,7 @@ import { useUsuario } from '../../hooks/useUsuario';
 export default function ConfiguracionScreen() {
   const router = useRouter();
   const params = useGlobalSearchParams();
-  
+
   const { logout } = useUsuario();
   const { setColorScheme } = useColorScheme();
 
@@ -113,7 +113,7 @@ export default function ConfiguracionScreen() {
 
   return (
     <ScrollView className="flex-1 bg-slate-50 dark:bg-slate-900 px-6 pt-12" showsVerticalScrollIndicator={false}>
-      
+
       <Text className="text-3xl font-bold text-slate-900 dark:text-white mb-6">Configuración</Text>
 
       <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 flex-row items-center shadow-sm border border-slate-100 dark:border-slate-700/50 mb-8">
@@ -130,21 +130,19 @@ export default function ConfiguracionScreen() {
       <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-700/50 mb-8">
         <Text className="text-xs font-bold text-slate-900 dark:text-white mb-3">Tema de la aplicación</Text>
         <View className="flex-row gap-x-3">
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => cambiarTema('claro')}
-            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${
-              isClaro ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-700' : 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700'
-            }`}
+            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${isClaro ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-700' : 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700'
+              }`}
           >
             <Feather name="sun" size={16} color={isClaro ? '#4f46e5' : '#64748b'} />
             <Text className={`ml-2 text-sm font-medium ${isClaro ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>Claro</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             onPress={() => cambiarTema('oscuro')}
-            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${
-              !isClaro ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-700' : 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700'
-            }`}
+            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl border ${!isClaro ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/30 dark:border-indigo-700' : 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700'
+              }`}
           >
             <Feather name="moon" size={16} color={!isClaro ? '#4f46e5' : '#64748b'} />
             <Text className={`ml-2 text-sm font-medium ${!isClaro ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>Oscuro</Text>
@@ -154,7 +152,7 @@ export default function ConfiguracionScreen() {
 
       <Text className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 ml-1">Planificación</Text>
       <View className="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700/50 mb-6">
-        
+
         <View className="mb-5">
           <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2">Hora para tareas sin hora</Text>
           <View className="flex-row justify-between items-center bg-slate-100 dark:bg-slate-900/50 px-3 py-1 rounded-xl">
@@ -222,7 +220,10 @@ export default function ConfiguracionScreen() {
 
       </View>
 
-      <TouchableOpacity className="bg-white dark:bg-slate-800 rounded-2xl p-4 flex-row items-center justify-between shadow-sm border border-slate-100 dark:border-slate-700/50 mb-10">
+      <TouchableOpacity
+        onPress={() => router.push('/gestionar-tipos')}
+        className="bg-white dark:bg-slate-800 rounded-2xl p-4 flex-row items-center justify-between shadow-sm border border-slate-100 dark:border-slate-700/50 mb-10"
+      >
         <View>
           <Text className="text-xs font-bold text-slate-900 dark:text-white mb-1">Gestionar tipos</Text>
           <Text className="text-[10px] text-slate-400">Universidad, Trabajo, Personal y Casa</Text>
@@ -230,7 +231,7 @@ export default function ConfiguracionScreen() {
         <Feather name="chevron-right" size={18} color="#94a3b8" />
       </TouchableOpacity>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={handleLogout}
         className="bg-red-50 dark:bg-red-900/20 py-4 rounded-xl flex-row items-center justify-center mb-3 active:bg-red-100 dark:active:bg-red-900/40"
       >
