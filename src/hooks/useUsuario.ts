@@ -1,9 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState } from 'react';
 import { db } from '../db/database';
 import { Usuario } from '../types/database';
 
 export function useUsuario() {
-  const [usuarioActual, setUsuarioActual] = useState<Usuario | null>(null);
   const [cargando, setCargando] = useState(false);
 
   const login = async (correo: string, contrasena: string) => {
@@ -14,7 +14,7 @@ export function useUsuario() {
         [correo, contrasena]
       );
       if (user) {
-        setUsuarioActual(user);
+        await AsyncStorage.setItem('userId', user.id.toString());
         return user;
       }
       return null;
@@ -26,11 +26,7 @@ export function useUsuario() {
     }
   };
 
-  const logout = () => {
-    setUsuarioActual(null);
-  };
-
- const crearUsuario = async (nombre: string, correo: string, contrasena: string) => {
+  const crearUsuario = async (nombre: string, correo: string, contrasena: string) => {
     setCargando(true);
     try {
       const result = await db.runAsync(
@@ -38,7 +34,7 @@ export function useUsuario() {
         [nombre, correo, contrasena]
       );
       const newUser = { id: result.lastInsertRowId, nombre, correo, contrasena };
-      setUsuarioActual(newUser);
+      await AsyncStorage.setItem('userId', newUser.id.toString());
       return newUser;
     } catch (error) {
       console.error('Error creando usuario:', error);
@@ -48,21 +44,9 @@ export function useUsuario() {
     }
   };
 
-  const actualizarUsuario = async (id: number, nombre: string, correo: string, contrasena: string) => {
-    try {
-      await db.runAsync(
-        'UPDATE Usuario SET nombre = ?, correo = ?, contrasena = ? WHERE id = ?',
-        [nombre, correo, contrasena, id]
-      );
-      if (usuarioActual?.id === id) {
-        setUsuarioActual({ id, nombre, correo, contrasena });
-      }
-      return true;
-    } catch (error) {
-      console.error('Error actualizando usuario:', error);
-      return false;
-    }
+  const logout = async () => {
+    await AsyncStorage.removeItem('userId');
   };
 
-  return { usuarioActual, cargando, login, logout, crearUsuario, actualizarUsuario };
+  return { cargando, login, crearUsuario, logout };
 }

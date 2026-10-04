@@ -1,21 +1,46 @@
 import { Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { db } from '../db/database';
 import { useUsuario } from '../hooks/useUsuario';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { colorScheme } = useColorScheme();
   const { cargando, login } = useUsuario();
-  
+  const [verificandoSesion, setVerificandoSesion] = useState(true);
+
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [mostrarPassword, setMostrarPassword] = useState(false);
 
   const isDark = colorScheme === 'dark';
   const iconColor = isDark ? '#94a3b8' : '#94a3b8'; // slate-400
+
+  useEffect(() => {
+    const checkSesion = async () => {
+      try {
+        const storedId = await AsyncStorage.getItem('userId');
+        if (storedId) {
+          const user = await db.getFirstAsync<{ id: number, nombre: string }>(
+            'SELECT id, nombre FROM Usuario WHERE id = ?', [Number(storedId)]
+          );
+          if (user) {
+            router.replace({ pathname: '/inicio', params: { idUsuario: user.id, nombre: user.nombre } });
+            return;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setVerificandoSesion(false);
+      }
+    };
+    checkSesion();
+  }, []);
 
   const handleLogin = async () => {
     if (!correo || !contrasena) return alert('Ingresa tu correo y contraseña');
@@ -27,6 +52,14 @@ export default function LoginScreen() {
     }
   };
 
+  if (verificandoSesion || cargando) {
+    return (
+      <View className="flex-1 justify-center items-center bg-slate-50 dark:bg-slate-900">
+        <ActivityIndicator size="large" color="#4f46e5" />
+      </View>
+    );
+  }
+
   if (cargando) {
     return (
       <View className="flex-1 justify-center items-center bg-slate-50 dark:bg-slate-900">
@@ -37,7 +70,7 @@ export default function LoginScreen() {
 
   return (
     <View className="flex-1 px-8 bg-slate-50 dark:bg-slate-900 justify-center">
-      
+
       {/* Cabecera y Logo */}
       <View className="items-center mb-10 mt-10">
         <View className="bg-indigo-600 w-16 h-16 rounded-2xl items-center justify-center mb-4">
@@ -100,7 +133,7 @@ export default function LoginScreen() {
       </TouchableOpacity>
 
       {/* Botones */}
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={handleLogin}
         className="bg-indigo-600 py-4 rounded-xl items-center mb-6 shadow-sm active:bg-indigo-700"
       >
@@ -113,7 +146,7 @@ export default function LoginScreen() {
         ¿Aún no tienes cuenta?
       </Text>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         onPress={() => router.push('/registro')}
         className="bg-indigo-50 dark:bg-indigo-900/30 py-4 rounded-xl items-center mb-8 border border-indigo-100 dark:border-indigo-800/50"
       >
