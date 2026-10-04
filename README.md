@@ -1,56 +1,143 @@
-# Welcome to your Expo app 👋
+# Life Assistant
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicacion movil desarrollada con React Native y Expo Router para la gestion personal de tiempo, horarios y tareas con soporte para subtareas jerarquicas[cite: 3, 4, 5].
 
-## Get started
+---
 
-1. Install dependencies
+## Caracteristicas Principales
 
-   ```bash
-   npm install
-   ```
+- **Gestion de Tareas:**
+  - Creacion, edicion y eliminacion de tareas con niveles de prioridad (Baja, Media, Alta, Urgente)[cite: 3, 4, 5].
+  - Clasificacion obligatoria por categorias y tipos con etiquetas visuales[cite: 3, 4].
+  - Creacion de subtareas vinculadas a una tarea principal desde las tarjetas o pantalla de detalle[cite: 4, 5].
+  - Formato estandarizado de fecha (AAAA-MM-DD) y hora de finalizacion mediante inputs numericos segmentados.
+- **Planificacion y Horarios:**
+  - Deteccion de actividades en curso y bloques de Hora libre en la pantalla principal.
+  - Registro semanal de actividades por dia y franja horaria[cite: 3].
+- **Almacenamiento Local:**
+  - Persistencia de datos local sin conexion mediante SQLite (expo-sqlite)[cite: 3].
+  - Integridad referencial con borrado en cascada para subtareas y relaciones[cite: 3].
+- **Interfaz:**
+  - Estilizado con NativeWind y Tailwind CSS con soporte para modo oscuro[cite: 4, 5].
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## Tecnologias Utilizadas
 
-In the output, you'll find options to open the app in a
+- React Native y Expo
+- Expo Router
+- SQLite (expo-sqlite)[cite: 3]
+- Tailwind CSS y NativeWind
+- Feather Icons (@expo/vector-icons)[cite: 4, 5]
+- AsyncStorage (@react-native-async-storage/async-storage)[cite: 4, 5]
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Estructura del Proyecto
 
-## Get a fresh project
+```text
+src/
+├── app/
+│   ├── (tabs)/
+│   │   ├── _layout.tsx
+│   │   ├── configuracion.tsx
+│   │   ├── horario.tsx
+│   │   ├── inicio.tsx
+│   │   └── tareas.tsx
+│   ├── crear-actividad.tsx
+│   ├── crear-tipo.tsx
+│   ├── editar-actividad.tsx
+│   ├── editar-tarea.tsx
+│   ├── editar-tipo.tsx
+│   ├── gestionar-tipos.tsx
+│   ├── index.tsx
+│   ├── nueva-tarea.tsx
+│   ├── registro.tsx
+│   └── _layout.tsx
+├── components/
+│   └── TareaItem.tsx
+├── constants/
+│   └── iconos.ts
+├── db/
+│   └── database.ts
+├── hooks/
+│   ├── useConfiguracion.ts
+│   ├── useHorario.ts
+│   ├── useTareas.ts
+│   ├── useTipo.ts
+│   └── useUsuario.ts
+└── types/
+    └── database.ts
 
-When you're ready, run:
-
-```bash
-npm run reset-project
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## Instalacion y Ejecucion
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+1. Clonar el repositorio:
+```bash
+git clone <URL_DEL_REPOSITORIO>
+cd life-assistant
 
-## Learn more
+```
 
-To learn more about developing your project with Expo, look at the following resources:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+2. Instalar dependencias:
+```bash
+npm install
 
-## Join the community
+```
 
-Join our community of developers creating universal apps.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+3. Iniciar el entorno de desarrollo:
+```bash
+npx expo start
+
+```
+
+
+
+---
+
+## Compilacion Local del APK (Android)
+
+1. Generar el directorio nativo:
+```bash
+npx expo prebuild --platform android
+
+```
+
+
+2. Configurar variables temporales en la terminal actual:
+* En CMD:
+```cmd
+set ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk
+set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+
+```
+
+
+* En PowerShell:
+```powershell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+
+```
+
+
+
+
+3. Compilar el archivo APK:
+```bash
+cd android
+.\gradlew assembleDebug
+
+```
+
+
+4. Ubicacion del archivo generado:
+```text
+app-debug.apk
+
+```
