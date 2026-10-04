@@ -40,7 +40,6 @@ export default function InicioScreen() {
         setRefrescando(false);
     };
 
-    // LÓGICA DE HORA HUECA / HORARIO ACTUAL
     const now = new Date();
     const diasSemana = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const diaActual = diasSemana[now.getDay()];
@@ -60,6 +59,12 @@ export default function InicioScreen() {
         return padre ? padre.descripcion : null;
     };
 
+    const getNombreTipo = (idTipo: number) => {
+        if (!idTipo) return null;
+        const tipo = tipos.find(t => t.id === idTipo);
+        return tipo ? tipo.nombre : null;
+    };
+
     const fechaFormat = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 
     return (
@@ -73,7 +78,6 @@ export default function InicioScreen() {
                 <Text className="text-sm text-slate-500 dark:text-slate-400 capitalize">{fechaFormat}</Text>
             </View>
 
-            {/* SECCIÓN DE HORA HUECA O ACTIVIDAD */}
             <View className={`rounded-[24px] p-6 mb-6 border ${horarioActual ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'}`}>
                 <Text className={`text-xs font-bold tracking-widest mb-1 ${horarioActual ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                     AHORA MISMO
@@ -89,7 +93,7 @@ export default function InicioScreen() {
                     </>
                 ) : (
                     <>
-                        <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Hora hueca</Text>
+                        <Text className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Hora libre</Text>
                         <Text className="text-sm text-slate-600 dark:text-slate-400">
                             Aprovecha para descansar o avanzar tareas.
                         </Text>
@@ -131,7 +135,7 @@ export default function InicioScreen() {
                 <Text className="text-center text-slate-500 my-4">Todo al día. ¡Buen trabajo!</Text>
             ) : (
                 pendientes.slice(0, 3).map(tarea => (
-                    <TareaItem key={tarea.id} tarea={tarea} nombrePadre={getNombrePadre(tarea.idTareaPadre as number)} onToggle={marcarCompletada} />
+                    <TareaItem key={tarea.id} tarea={tarea} nombrePadre={getNombrePadre(tarea.idTareaPadre as number)} nombreTipo={getNombreTipo(tarea.idTipo as number)} onToggle={marcarCompletada} />
                 ))
             )}
             <View className="h-20" />

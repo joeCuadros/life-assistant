@@ -2,11 +2,11 @@ import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Modal, RefreshControl, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Alert, Modal, RefreshControl, ScrollView, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import TareaItem from '../../components/TareaItem';
 import { useTareas } from '../../hooks/useTareas';
+import { useTipo } from '../../hooks/useTipo';
 
-// Componente para un Select real nativo (Dropdown)
 const SelectFiltro = ({ label, value, opciones, onSelect }: any) => {
     const [modalVisible, setModalVisible] = useState(false);
     return (
@@ -48,10 +48,10 @@ export default function TareasScreen() {
     const router = useRouter();
     const [userId, setUserId] = useState<number | null>(null);
 
-    const { tareas, cargarTareas, marcarCompletada } = useTareas(userId);
+    const { tareas, cargarTareas, marcarCompletada, eliminarTarea } = useTareas(userId);
+    const { tipos, cargarTipos } = useTipo(userId);
     const [refrescando, setRefrescando] = useState(false);
 
-    // Estados de Selects
     const [filtroPrioridad, setFiltroPrioridad] = useState('Todas');
     const [filtroEstado, setFiltroEstado] = useState('Todos');
 
@@ -61,8 +61,11 @@ export default function TareasScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            if (userId) cargarTareas();
-        }, [userId, cargarTareas])
+            if (userId) {
+                cargarTareas();
+                cargarTipos();
+            }
+        }, [userId, cargarTareas, cargarTipos])
     );
 
     const onRefresh = async () => {
@@ -71,7 +74,13 @@ export default function TareasScreen() {
         setRefrescando(false);
     };
 
-    // Aplicar filtros
+    const handleEliminar = (id: number) => {
+        Alert.alert("Eliminar tarea", "¿Seguro que quieres eliminar esta tarea?", [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Eliminar", style: "destructive", onPress: () => eliminarTarea(id) }
+        ]);
+    };
+
     let tareasFiltradas = tareas;
     if (filtroPrioridad !== 'Todas') tareasFiltradas = tareasFiltradas.filter(t => t.prioridad === filtroPrioridad);
     if (filtroEstado === 'Pendientes') tareasFiltradas = tareasFiltradas.filter(t => !t.completado);
@@ -86,11 +95,16 @@ export default function TareasScreen() {
         return padre ? padre.descripcion : null;
     };
 
+    const getNombreTipo = (idTipo: number) => {
+        if (!idTipo) return null;
+        const tipo = tipos.find(t => t.id === idTipo);
+        return tipo ? tipo.nombre : null;
+    };
+
     return (
         <View className="flex-1 bg-slate-50 dark:bg-slate-900">
             <ScrollView className="flex-1 px-5 pt-12" showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refrescando} onRefresh={onRefresh} />}>
                 
-                {/* SIN LUPA */}
                 <View className="mb-6">
                     <Text className="text-4xl font-bold text-slate-900 dark:text-white">Mis tareas</Text>
                     <Text className="text-sm text-slate-500 dark:text-slate-400 mt-2">
@@ -98,7 +112,6 @@ export default function TareasScreen() {
                     </Text>
                 </View>
 
-                {/* SELECTS DE VERDAD */}
                 <View className="flex-row mx-[-4px] mb-8">
                     <SelectFiltro label="Prioridad" value={filtroPrioridad} opciones={['Todas', 'Baja', 'Media', 'Alta', 'Urgente']} onSelect={setFiltroPrioridad} />
                     <SelectFiltro label="Estado" value={filtroEstado} opciones={['Todos', 'Pendientes', 'Completadas']} onSelect={setFiltroEstado} />
@@ -121,7 +134,7 @@ export default function TareasScreen() {
                 {pendientes.length === 0 && <Text className="text-slate-500 mb-6">No hay tareas con estos filtros.</Text>}
 
                 {pendientes.map(tarea => (
-                    <TareaItem key={tarea.id} tarea={tarea} nombrePadre={getNombrePadre(tarea.idTareaPadre as number)} onToggle={marcarCompletada} />
+                    <TareaItem key={tarea.id} tarea={tarea} nombrePadre={getNombrePadre(tarea.idTareaPadre as number)} nombreTipo={getNombreTipo(tarea.idTipo as number)} onToggle={marcarCompletada} onDelete={() => handleEliminar(tarea.id)} />
                 ))}
 
                 {completadas.length > 0 && (
@@ -130,7 +143,7 @@ export default function TareasScreen() {
                             Completadas · {completadas.length}
                         </Text>
                         {completadas.map(tarea => (
-                            <TareaItem key={tarea.id} tarea={tarea} nombrePadre={getNombrePadre(tarea.idTareaPadre as number)} onToggle={marcarCompletada} />
+                            <TareaItem key={tarea.id} tarea={tarea} nombrePadre={getNombrePadre(tarea.idTareaPadre as number)} nombreTipo={getNombreTipo(tarea.idTipo as number)} onToggle={marcarCompletada} onDelete={() => handleEliminar(tarea.id)} />
                         ))}
                     </>
                 )}

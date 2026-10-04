@@ -2,15 +2,51 @@ import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { useTareas } from '../hooks/useTareas';
 import { useTipo } from '../hooks/useTipo';
 
+const SelectInput = ({ label, value, opciones, onSelect, placeholder }: any) => {
+    const [modalVisible, setModalVisible] = useState(false);
+    const textToShow = value ? opciones.find((o: any) => o.id === value)?.nombre : placeholder;
+
+    return (
+        <>
+            <TouchableOpacity onPress={() => setModalVisible(true)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-4 flex-row justify-between items-center shadow-sm">
+                <Text className={`text-base ${value ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>{textToShow}</Text>
+                <Feather name="chevron-down" size={18} color="#94a3b8" />
+            </TouchableOpacity>
+
+            <Modal visible={modalVisible} transparent animationType="fade">
+                <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                    <View className="flex-1 justify-end bg-black/60">
+                        <View className="bg-white dark:bg-slate-900 rounded-t-3xl p-6 pb-12 max-h-[50%]">
+                            <Text className="text-lg font-bold text-slate-900 dark:text-white mb-4">Seleccionar {label}</Text>
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                {opciones.map((opc: any) => (
+                                    <TouchableOpacity 
+                                        key={opc.id} 
+                                        onPress={() => { onSelect(opc.id); setModalVisible(false); }} 
+                                        className="py-4 border-b border-slate-100 dark:border-slate-800 flex-row justify-between items-center"
+                                    >
+                                        <Text className={`text-base ${value === opc.id ? 'font-bold text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>{opc.nombre}</Text>
+                                        {value === opc.id && <Feather name="check" size={18} color="#4f46e5" />}
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+        </>
+    );
+};
+
 const PRIORIDADES_UI = [
-  { id: 'Baja', colorCls: 'bg-slate-50 border-slate-300 dark:bg-slate-800 dark:border-slate-600', textCls: 'text-slate-600 dark:text-slate-300', iconColor: '#64748b' },
-  { id: 'Media', colorCls: 'bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-700', textCls: 'text-blue-600 dark:text-blue-400', iconColor: '#3b82f6' },
-  { id: 'Alta', colorCls: 'bg-orange-50 border-orange-300 dark:bg-orange-900/30 dark:border-orange-700', textCls: 'text-orange-600 dark:text-orange-400', iconColor: '#f97316' },
-  { id: 'Urgente', colorCls: 'bg-red-50 border-red-300 dark:bg-red-900/30 dark:border-red-700', textCls: 'text-red-600 dark:text-red-400', iconColor: '#ef4444' },
+  { id: 'Baja', icon: 'flag' },
+  { id: 'Media', icon: 'flag' },
+  { id: 'Alta', icon: 'flag' },
+  { id: 'Urgente', icon: 'alert-circle' },
 ];
 
 export default function EditarTareaScreen() {
@@ -23,14 +59,26 @@ export default function EditarTareaScreen() {
   const { tareas, cargarTareas, actualizarTarea, eliminarTarea } = useTareas(userId);
   const { tipos, cargarTipos } = useTipo(userId);
 
+  const tareaActual = tareas.find(t => t.id === tareaId);
+  const idTareaPadre = tareaActual?.idTareaPadre || null;
+
   const [descripcion, setDescripcion] = useState((params.descripcion as string) || '');
   const [idTipo, setIdTipo] = useState<number | null>(params.idTipo ? Number(params.idTipo) : null);
-  const [prioridad, setPrioridad] = useState<'Baja' | 'Media' | 'Alta' | 'Urgente'>((params.prioridad as any) || 'Media');
+  const [prioridad, setPrioridad] = useState<'Baja' | 'Media' | 'Alta' | 'Urgente'>((params.prioridad as any) || 'Urgente');
   
   const [fechaStr, horaStr] = (params.fecha as string || '').split(' ');
-  const [fecha, setFecha] = useState(fechaStr || '');
-  const [hora, setHora] = useState(horaStr || '');
+  const [anioIni = '', mesIni = '', diaIni = ''] = fechaStr ? fechaStr.split('-') : [];
+  
+  const [dia, setDia] = useState(diaIni);
+  const [mes, setMes] = useState(mesIni);
+  const [anio, setAnio] = useState(anioIni);
+  
+  const [horaIni = '', minIni = ''] = horaStr ? horaStr.split(':') : [];
+  const [finH, setFinH] = useState(horaIni);
+  const [finM, setFinM] = useState(minIni);
+
   const [guardando, setGuardando] = useState(false);
+  const [completado, setCompletado] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem('userId').then(id => { if (id) setUserId(Number(id)); });
@@ -40,15 +88,20 @@ export default function EditarTareaScreen() {
     React.useCallback(() => {
       if (userId) {
         cargarTipos();
-        cargarTareas(); // Refresca por si agregaste una subtarea
+        cargarTareas();
       }
     }, [userId])
   );
 
   const handleGuardar = async () => {
     if (!descripcion.trim()) return alert('La descripción es obligatoria');
+    if (!idTipo) return alert('El tipo es obligatorio');
+
     setGuardando(true);
-    const fechaFinal = (fecha || hora) ? `${fecha} ${hora}`.trim() : null;
+    
+    const fechaArmada = (anio && mes && dia) ? `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}` : '';
+    const horaFinal = (finH || finM) ? `${(finH || '00').padStart(2, '0')}:${(finM || '00').padStart(2, '0')}` : '';
+    const fechaFinal = (fechaArmada || horaFinal) ? `${fechaArmada} ${horaFinal}`.trim() : null;
     
     await actualizarTarea(tareaId, descripcion, prioridad, idTipo, fechaFinal);
     setGuardando(false);
@@ -65,12 +118,11 @@ export default function EditarTareaScreen() {
     ]);
   };
 
-  // Extraer las subtareas que pertenecen a esta tarea principal
   const misSubtareas = tareas.filter(t => t.idTareaPadre === tareaId);
 
   return (
-    <ScrollView className="flex-1 bg-slate-50 dark:bg-slate-900 px-6 pt-12">
-      <View className="flex-row items-center mb-6">
+    <ScrollView className="flex-1 bg-slate-50 dark:bg-slate-900 px-6 pt-12" showsVerticalScrollIndicator={false}>
+      <View className="flex-row items-center mb-8">
         <TouchableOpacity onPress={() => router.back()} className="p-2 -ml-2 mr-2">
           <Feather name="arrow-left" size={24} color="#0f172a" className="dark:text-white" />
         </TouchableOpacity>
@@ -83,24 +135,24 @@ export default function EditarTareaScreen() {
       <View className="mb-6">
         <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2 ml-1">Descripción</Text>
         <TextInput
-          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-4 text-slate-900 dark:text-white"
+          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-4 text-slate-900 dark:text-white h-24"
           value={descripcion}
           onChangeText={setDescripcion}
+          placeholder="Entregar informe de metodología"
+          multiline={true}
+          textAlignVertical="top"
         />
       </View>
 
       <View className="mb-6">
         <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2 ml-1">Tipo</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {tipos.map(t => (
-            <TouchableOpacity 
-              key={t.id} onPress={() => setIdTipo(t.id)}
-              className={`px-4 py-3 rounded-xl border ${idTipo === t.id ? 'bg-indigo-50 border-indigo-300 dark:bg-indigo-900/40' : 'bg-white border-slate-200 dark:bg-slate-800'}`}
-            >
-              <Text className={`text-sm font-medium ${idTipo === t.id ? 'text-indigo-600' : 'text-slate-600 dark:text-slate-300'}`}>{t.nombre}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SelectInput 
+            label="Tipo" 
+            value={idTipo} 
+            opciones={tipos.map(t => ({ id: t.id, nombre: t.nombre }))} 
+            onSelect={setIdTipo} 
+            placeholder="Seleccionar tipo..." 
+        />
       </View>
 
       <View className="mb-6">
@@ -111,60 +163,103 @@ export default function EditarTareaScreen() {
             return (
               <TouchableOpacity 
                 key={p.id} onPress={() => setPrioridad(p.id as any)}
-                className={`flex-1 py-3 items-center rounded-xl mx-1 border ${isSelected ? p.colorCls : 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}
+                className={`flex-1 py-3 items-center rounded-xl mx-1 border ${isSelected ? 'bg-indigo-50 border-indigo-500' : 'bg-white border-slate-200'}`}
               >
-                <Feather name="flag" size={14} color={isSelected ? p.iconColor : '#94a3b8'} />
-                <Text className={`text-xs font-bold mt-1 ${isSelected ? p.textCls : 'text-slate-500'}`}>{p.id}</Text>
+                <Feather name={p.icon as any} size={16} color={isSelected ? '#4f46e5' : '#94a3b8'} />
+                <Text className={`text-[11px] font-bold mt-1 ${isSelected ? 'text-indigo-600' : 'text-slate-500'}`}>{p.id}</Text>
               </TouchableOpacity>
             )
           })}
         </View>
       </View>
 
-      <View className="flex-row justify-between gap-x-4 mb-4">
-        <View className="flex-1">
-          <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2 ml-1">Fecha</Text>
-          <View className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-4 flex-row justify-between items-center">
-            <TextInput className="text-slate-900 dark:text-white text-base w-full" value={fecha} onChangeText={setFecha} />
-            <Feather name="calendar" size={16} color="#94a3b8" className="absolute right-4" />
+      <View className="flex-row justify-between gap-x-4 mb-2">
+        <View className="flex-[1.5]">
+          <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2 ml-1">Fecha (DD/MM/AAAA)</Text>
+          <View className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex-row justify-center items-center">
+            <TextInput className="text-slate-900 dark:text-white text-base text-center" value={dia} onChangeText={setDia} placeholder="DD" keyboardType="numeric" maxLength={2} style={{ width: 30 }} />
+            <Text className="text-slate-400 mx-1">/</Text>
+            <TextInput className="text-slate-900 dark:text-white text-base text-center" value={mes} onChangeText={setMes} placeholder="MM" keyboardType="numeric" maxLength={2} style={{ width: 32 }} />
+            <Text className="text-slate-400 mx-1">/</Text>
+            <TextInput className="text-slate-900 dark:text-white text-base text-center" value={anio} onChangeText={setAnio} placeholder="AAAA" keyboardType="numeric" maxLength={4} style={{ width: 45 }} />
           </View>
-        </View>
-        <View className="flex-1">
-          <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2 ml-1">Hora</Text>
-          <View className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-4 flex-row justify-between items-center">
-            <TextInput className="text-slate-900 dark:text-white text-base w-full" value={hora} onChangeText={setHora} />
-            <Feather name="clock" size={16} color="#94a3b8" className="absolute right-4" />
-          </View>
-        </View>
-      </View>
-
-      {/* SECCIÓN DE SUBTAREAS VINCULADAS */}
-      <View className="mb-8 mt-6">
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className="text-sm font-bold text-slate-900 dark:text-white ml-1">Subtareas de esta tarea</Text>
-          <TouchableOpacity onPress={() => router.push({ pathname: '/nueva-tarea', params: { idTareaPadre: tareaId } })}>
-            <Text className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mr-1">+ Crear</Text>
-          </TouchableOpacity>
         </View>
         
-        {misSubtareas.length === 0 ? (
-          <Text className="text-xs text-slate-500 ml-1">No hay subtareas vinculadas a esta.</Text>
-        ) : (
-          misSubtareas.map(sub => (
-            <TouchableOpacity 
-              key={sub.id} 
-              onPress={() => router.push({ pathname: '/editar-tarea', params: { id: sub.id, descripcion: sub.descripcion, prioridad: sub.prioridad, idTipo: sub.idTipo, fecha: sub.fecha } })}
-              className="bg-white dark:bg-slate-800 p-4 rounded-2xl mb-2 border border-slate-100 dark:border-slate-700/50 flex-row justify-between items-center shadow-sm"
-            >
-              <View>
-                <Text className={`text-sm font-bold ${sub.completado ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>{sub.descripcion}</Text>
-                <Text className="text-xs text-slate-500">{sub.completado ? 'Completada' : 'Pendiente'}</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color="#cbd5e1" />
-            </TouchableOpacity>
-          ))
-        )}
+        <View className="flex-1">
+          <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2 ml-1">Hora de finalización</Text>
+          <View className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-3 flex-row justify-center items-center">
+            <TextInput 
+              className="text-slate-900 dark:text-white text-lg font-bold text-center w-12" 
+              value={finH} 
+              onChangeText={(t) => setFinH(t.replace(/[^0-9]/g, ''))} 
+              keyboardType="numeric"
+              maxLength={2} 
+            />
+            <Text className="text-slate-900 dark:text-white text-lg font-bold pb-1">:</Text>
+            <TextInput 
+              className="text-slate-900 dark:text-white text-lg font-bold text-center w-12" 
+              value={finM} 
+              onChangeText={(t) => setFinM(t.replace(/[^0-9]/g, ''))} 
+              keyboardType="numeric"
+              maxLength={2} 
+            />
+          </View>
+        </View>
       </View>
+      <Text className="text-[11px] text-slate-400 mb-6 ml-1">Sin hora, se planifica a las 09:00 según tu configuración.</Text>
+
+      {idTareaPadre && (
+        <View className="mb-6">
+          <Text className="text-xs font-bold text-slate-900 dark:text-white mb-2 ml-1">Tarea principal</Text>
+          <View className="bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-4 flex-row justify-between items-center opacity-70">
+              <Text className="text-slate-600 dark:text-slate-400 text-base">
+                  {tareas.find(t => Number(t.id) === idTareaPadre)?.descripcion || 'Cargando tarea...'}
+              </Text>
+              <Feather name="lock" size={16} color="#94a3b8" />
+          </View>
+          <Text className="text-[11px] text-slate-400 mt-2 ml-1">Esta tarea es una subtarea.</Text>
+        </View>
+      )}
+
+      {!idTareaPadre && (
+        <View className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-base font-bold text-slate-800">Subtareas</Text>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/nueva-tarea', params: { idTareaPadre: String(tareaId) } })}>
+              <Text className="text-sm font-bold text-indigo-600">+ Crear</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {misSubtareas.length === 0 ? (
+            <Text className="text-sm text-slate-500">No hay subtareas vinculadas.</Text>
+          ) : (
+            misSubtareas.map(sub => (
+              <TouchableOpacity 
+                key={sub.id} 
+                onPress={() => router.push({ pathname: '/editar-tarea', params: { id: String(sub.id), descripcion: sub.descripcion, prioridad: sub.prioridad, idTipo: sub.idTipo, fecha: sub.fecha } })}
+                className="flex-row justify-between items-center py-2"
+              >
+                <View>
+                  <Text className={`text-base font-bold ${sub.completado ? 'line-through text-slate-400' : 'text-slate-800'}`}>{sub.descripcion}</Text>
+                  <Text className="text-xs text-slate-500 mt-1">{sub.completado ? 'Completada' : 'Pendiente'} · {sub.fecha || 'Sin fecha'}</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color="#cbd5e1" />
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      )}
+
+      <TouchableOpacity 
+        onPress={() => setCompletado(!completado)}
+        className="bg-white border border-slate-200 rounded-2xl p-5 flex-row justify-between items-center mb-8 shadow-sm"
+      >
+        <View className="flex-row items-center">
+            <Feather name={completado ? "check-circle" : "circle"} size={22} color={completado ? "#4f46e5" : "#cbd5e1"} />
+            <Text className="text-base font-medium text-slate-800 ml-3">{completado ? 'Completada' : 'Pendiente'}</Text>
+        </View>
+        <Text className="text-sm font-bold text-indigo-600">Marcar completada</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity 
         onPress={handleGuardar} disabled={guardando}
@@ -179,7 +274,6 @@ export default function EditarTareaScreen() {
         <Feather name="trash-2" size={18} color="#ef4444" />
         <Text className="text-red-500 font-bold text-base ml-2">Eliminar tarea</Text>
       </TouchableOpacity>
-
     </ScrollView>
   );
 }
